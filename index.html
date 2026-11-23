@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Симулятор: Електронний кабінет платника податків ДПС (2026)</title>
+    <!-- Підключення Tailwind CSS для сучасного адаптивного інтерфейсу -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Підключення шрифту Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+        }
+        /* Плавна поява кроків та сповіщень */
+        .fade-in {
+            animation: fadeIn 0.35s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Стилізація під офіційний державний портал */
+        .gov-stripe {
+            background: linear-gradient(90deg, #0057b7 0%, #0057b7 50%, #ffd700 50%, #ffd700 100%);
+            height: 4px;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Державна смуга зверху -->
+    <div class="gov-stripe w-full"></div>
+
+    <!-- Шапка Електронного кабінету ДПС -->
+    <header class="bg-slate-900 text-white shadow-md">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <!-- Герб / Логотип порталу (SVG) -->
+                <div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center shrink-0 shadow-inner">
+                    <svg class="w-6 h-6 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-xs text-blue-300 uppercase tracking-wider font-semibold">Державна податкова служба України • Навчальний тренажер</div>
+                    <h1 class="text-base sm:text-lg font-bold leading-tight">Електронний кабінет платника податків (cabinet.tax.gov.ua)</h1>
+                </div>
+            </div>
+
+            <!-- Блок статусу авторизації ФОП -->
+            <div id="user-badge" class="hidden items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg text-xs sm:text-sm">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <div>
+                    <div class="font-semibold text-white">ФОП Коваленко А.В. (Автосервіс / СТО)</div>
+                    <div class="text-slate-400 text-xs">РНОКПП: 3456789012 • Загальна система (ПДВ)</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Прогрес-бар етапів роботи в кабінеті -->
+    <div class="bg-white border-b border-slate-200 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 py-3">
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs sm:text-sm">
+                <div id="nav-step-1" class="step-pill flex items-center gap-2 p-2 rounded-lg bg-blue-50 text-blue-700 font-semibold border border-blue-200">
+                    <span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs shrink-0">1</span>
+                    <span>Вхід за КЕП</span>
+                </div>
+                <div id="nav-step-2" class="step-pill flex items-center gap-2 p-2 rounded-lg bg-slate-50 text-slate-400 border border-slate-200">
+                    <span class="w-5 h-5 rounded-full bg-slate-300 text-white flex items-center justify-center text-xs shrink-0">2</span>
+                    <span>Розрахунок податків</span>
+                </div>
+                <div id="nav-step-3" class="step-pill flex items-center gap-2 p-2 rounded-lg bg-slate-50 text-slate-400 border border-slate-200">
+                    <span class="w-5 h-5 rounded-full bg-slate-300 text-white flex items-center justify-center text-xs shrink-0">3</span>
+                    <span>Вибір форми звіту</span>
+                </div>
+                <div id="nav-step-4" class="step-pill flex items-center gap-2 p-2 rounded-lg bg-slate-50 text-slate-400 border border-slate-200">
+                    <span class="w-5 h-5 rounded-full bg-slate-300 text-white flex items-center justify-center text-xs shrink-0">4</span>
+                    <span>Заповнення та КЕП</span>
+                </div>
+                <div id="nav-step-5" class="step-pill col-span-2 sm:col-span-1 flex items-center gap-2 p-2 rounded-lg bg-slate-50 text-slate-400 border border-slate-200">
+                    <span class="w-5 h-5 rounded-full bg-slate-300 text-white flex items-center justify-center text-xs shrink-0">5</span>
+                    <span>Квитанція № 2</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Вбудований блок системних повідомлень (замість alert) -->
+    <div id="toast-box" class="max-w-6xl mx-auto w-full px-4 mt-4 hidden">
+        <div id="toast-content" class="p-3.5 rounded-xl border flex items-start gap-3 text-sm shadow-sm"></div>
+    </div>
+
+    <!-- Основна робоча область тренажера -->
+    <main class="max-w-6xl mx-auto w-full px-4 py-6 flex-grow">
+
+        <!-- Контекстна картка завдання для студента -->
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+                <span class="text-xs font-bold uppercase tracking-wider text-amber-800 bg-amber-200/70 px-2.5 py-0.5 rounded-md">
+                    Практичний кейс (Урок № 12 • Профіль: СТО та автотранспорт)
+                </span>
+                <span class="text-xs text-amber-700 font-medium">Звітний період: І квартал 2026 року</span>
+            </div>
+            <p class="text-sm text-amber-950 leading-relaxed">
+                Ви — <strong>ФОП Коваленко А.В.</strong>, власник майстерні з ремонту автомобілів та сільгосптехніки на <strong>загальній системі оподаткування (платник ПДВ)</strong>. 
+                За <strong>І квартал 2026 року</strong> ваша СТО отримала виторг <strong>300 000 грн</strong> (у т.ч. ПДВ — <strong>50 000 грн</strong>). 
+                Документально підтверджені витрати на запчастини та матеріали склали <strong>120 000 грн (без ПДВ)</strong>, а вхідний ПДВ за податковими накладними постачальників — <strong>10 000 грн</strong>. 
+                Пройдіть усі 5 етапів у Електронному кабінеті ДПС та отримайте <strong>Квитанцію № 2</strong>!
+            </p>
+        </div>
+
+        <!-- ==================== ЕТАП 1: ВХІД ЗА ДОПОМОГОЮ КЕП ==================== -->
+        <section id="step-1" class="fade-in bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-8">
+            <div class="max-w-xl mx-auto">
+                <div class="text-center mb-6">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-100 text-blue-700 mb-3">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+                        </svg>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-900">Етап 1. Авторизація в Електронному кабінеті за допомогою КЕП</h2>
+                    <p class="text-sm text-slate-600 mt-1">
+                        Для входу в особистий кабінет на сайті <strong>tax.gov.ua</strong> платник податків використовує кваліфікований електронний підпис (КЕП).
+                    </p>
+                </div>
+
+                <div class="space-y-4 bg-slate-50 p-5 rounded-xl border border-slate-200">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">1. Кваліфікований надавач електронних довірчих послуг (КНЕДП)</label>
+                        <select id="knedp-select" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">-- Оберіть надавача КЕП --</option>
+                            <option value="dps">КНЕДП Державної податкової служби України (безкоштовний ключ)</option>
+                            <option value="privat">КНЕДП АТ КБ «ПриватБанк»</option>
+                            <option value="diia">Дія.Підпис (КНЕДП «Дія»)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">2. Особистий ключ (файл Key-6.dat)</label>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <input id="key-filename" type="text" readonly placeholder="Файл ключа не завантажено..." class="flex-grow rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700">
+                            <button type="button" onclick="loadDemoKey()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium transition shrink-0">
+                                Обрати тестовий ключ ФОП
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">3. Пароль захисту ключа</label>
+                        <div class="flex gap-2">
+                            <input id="key-password" type="password" placeholder="Введіть пароль (для тесту: 2026)" class="flex-grow rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <button type="button" onclick="fillDemoPassword()" class="px-3 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-xs font-medium text-slate-700 transition shrink-0">
+                                Підставити «2026»
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="button" onclick="submitStep1()" class="w-full mt-2 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm transition">
+                        Зчитати ключ та увійти в Електронний кабінет →
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== ЕТАП 2: РОЗРАХУНОК ПОДАТКІВ (ЗАВДАННЯ № 2) ==================== -->
+        <section id="step-2" class="hidden fade-in bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-8">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-slate-900">Етап 2. Податковий калькулятор ФОП на загальній системі (І квартал 2026 р.)</h2>
+                <p class="text-sm text-slate-600 mt-1">
+                    Перед заповненням декларації обчисліть показники діяльності вашої СТО за І квартал 2026 року. Система автоматично перевірить правильність ваших розрахунків.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Довідка зі ставками 2026 року -->
+                <div class="bg-blue-50/70 border border-blue-200 rounded-xl p-4 text-sm space-y-2.5 h-fit">
+                    <h3 class="font-bold text-blue-900 flex items-center gap-2">
+                        <span>📘</span> Пам'ятка ставок 2026 року:
+                    </h3>
+                    <ul class="space-y-1.5 text-blue-950 text-xs sm:text-sm">
+                        <li>• <strong>Дохід без ПДВ:</strong> Виторг з ПДВ − ПДВ (300 000 − 50 000)</li>
+                        <li>• <strong>Чистий дохід:</strong> Дохід без ПДВ − Витрати без ПДВ</li>
+                        <li>• <strong>ПДФО (18%):</strong> 18% від чистого доходу</li>
+                        <li>• <strong>Військовий збір (5%):</strong> 5% від чистого доходу</li>
+                        <li>• <strong>ЄСВ (22%):</strong> 22% від чистого доходу (не менше 1 902,34 грн/міс, тобто 5 707,02 грн за квартал)</li>
+                        <li>• <strong>ПДВ до сплати:</strong> Податкове зобов'язання (50 000) − Податковий кредит (10 000)</li>
+                    </ul>
+                </div>
+
+                <!-- Поля для введення розрахунків -->
+                <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">1. Чистий оподатковуваний дохід (грн)</label>
+                        <p class="text-xs text-slate-500 mb-2">Дохід без ПДВ (250 000) мінус витрати (120 000)</p>
+                        <input id="calc-net-income" type="number" placeholder="Наприклад: 130000" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <div class="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">2. ПДФО за І квартал (18%), грн</label>
+                        <p class="text-xs text-slate-500 mb-2">18% від чистого доходу</p>
+                        <input id="calc-pdfo" type="number" placeholder="Введіть суму в грн" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <div class="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">3. Військовий збір за І квартал (5%), грн</label>
+                        <p class="text-xs text-slate-500 mb-2">5% від чистого доходу</p>
+                        <input id="calc-vz" type="number" placeholder="Введіть суму в грн" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <div class="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">4. ЄСВ за І квартал (22%), грн</label>
+                        <p class="text-xs text-slate-500 mb-2">22% від чистого доходу (більше мін. внеску)</p>
+                        <input id="calc-esv" type="number" placeholder="Введіть суму в грн" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <div class="sm:col-span-2 p-4 rounded-xl border border-slate-200 bg-slate-50">
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">5. ПДВ до сплати в бюджет за І квартал, грн</label>
+                        <p class="text-xs text-slate-500 mb-2">ПДВ у виторгу (50 000 грн) мінус вхідний ПДВ за податковими накладними (10 000 грн)</p>
+                        <input id="calc-pdv" type="number" placeholder="Введіть суму ПДВ до сплати" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <div class="sm:col-span-2 flex flex-wrap gap-3 pt-2">
+                        <button type="button" onclick="checkCalculations()" class="flex-grow py-3 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm transition">
+                            Перевірити розрахунки та перейти до вибору звіту →
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== ЕТАП 3: ВИБІР ЗВІТНОЇ ФОРМИ ТА ПЕРІОДУ ==================== -->
+        <section id="step-3" class="hidden fade-in bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-8">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-slate-900">Етап 3. Розділ «Введення звітності»: вибір періоду та форми звіту</h2>
+                <p class="text-sm text-slate-600 mt-1">
+                    Оберіть правильний звітний період, граничний строк подання та бланк квартальної об'єднаної звітності з ПДФО, ВЗ та ЄСВ для ФОП у 2026 році.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">1. Звітний рік</label>
+                    <select id="report-year" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm">
+                        <option value="2025">2025 рік</option>
+                        <option value="2026" selected>2026 рік</option>
+                    </select>
+                </div>
+
+                <div class="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">2. Звітний період</label>
+                    <select id="report-period" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm">
+                        <option value="">-- Оберіть період --</option>
+                        <option value="m1">Січень (місячна — для юросіб)</option>
+                        <option value="q1">І Квартал (квартальна — для ФОП)</option>
+                        <option value="year">Рік (до 1 травня наступного року)</option>
+                    </select>
+                </div>
+
+                <div class="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">3. Граничний строк подання</label>
+                    <select id="report-deadline" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm">
+                        <option value="">-- Оберіть строк за ПКУ --</option>
+                        <option value="20days">Протягом 20 календарних днів</option>
+                        <option value="40days">Протягом 40 календарних днів після кварталу</option>
+                        <option value="1may">Щороку до 1 травня</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-2">4. Оберіть форму документа для створення:</label>
+                <div class="space-y-2.5">
+                    <label class="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 hover:bg-blue-50/50 cursor-pointer transition">
+                        <input type="radio" name="form-code" value="F0103308" class="mt-1">
+                        <div>
+                            <div class="font-semibold text-sm text-slate-900">F0103308 — Податкова декларація платника єдиного податку (3 група)</div>
+                            <div class="text-xs text-slate-500">Застосовується виключно для спрощеної системи оподаткування.</div>
+                        </div>
+                    </label>
+
+                    <label class="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 hover:bg-blue-50/50 cursor-pointer transition">
+                        <input type="radio" name="form-code" value="J0500110" class="mt-1">
+                        <div>
+                            <div class="font-semibold text-sm text-slate-900">F0500110 — Податковий розрахунок сум доходу, нарахованого на користь фізосіб, і сум утриманого з них податку (ПДФО, ВЗ) та нарахованого ЄСВ</div>
+                            <div class="text-xs text-slate-500">Об'єднана квартальна звітність ФОП із розбивкою показників за місяцями кварталу (січень, лютий, березень).</div>
+                        </div>
+                    </label>
+
+                    <label class="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 hover:bg-blue-50/50 cursor-pointer transition">
+                        <input type="radio" name="form-code" value="F0100214" class="mt-1">
+                        <div>
+                            <div class="font-semibold text-sm text-slate-900">F0100214 — Річна податкова декларація про майновий стан і доходи</div>
+                            <div class="text-xs text-slate-500">Подається ФОП на загальній системі за підсумками року до 1 травня.</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <button type="button" onclick="submitStep3()" class="w-full sm:w-auto py-3 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm transition">
+                Створити екранну форму звіту →
+            </button>
+        </section>
+
+        <!-- ==================== ЕТАП 4: ЗАПОВНЕННЯ ПОМІСЯЧНОЇ РОЗБИВКИ ТА ПІДПИСАННЯ КЕП ==================== -->
+        <section id="step-4" class="hidden fade-in bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-8">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-4 mb-5 border-b border-slate-200">
+                <div>
+                    <span class="text-xs font-bold text-blue-700 bg-blue-100 px-2.5 py-0.5 rounded">Форма F0500110 • І Квартал 2026 р.</span>
+                    <h2 class="text-lg sm:text-xl font-bold text-slate-900 mt-1">Етап 4. Помісячна розбивка показників та підписання КЕП</h2>
+                </div>
+                <div class="text-xs text-slate-500">
+                    Статус документа: <span id="doc-status-label" class="font-bold text-amber-600">Чернетка (не перевірено)</span>
+                </div>
+            </div>
+
+            <p class="text-sm text-slate-600 mb-4">
+                У квартальній об'єднаній звітності суми податків обов'язково розбиваються за <strong>трьома місяцями кварталу</strong> (Січень, Лютий, Березень). 
+                Для прикладу роботи СТО розподіліть квартальні суми з Етапу 2 так, щоб їхня сума за 3 місяці дорівнювала квартальному підсумку (можна скористатися кнопкою автозаповнення або ввести власний розподіл).
+            </p>
+
+            <!-- Адаптивна таблиця об'єднаної звітності -->
+            <div class="overflow-x-auto border border-slate-200 rounded-xl mb-5">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-slate-100 text-slate-700 text-xs uppercase">
+                        <tr>
+                            <th class="p-3">Показник звітності (грн)</th>
+                            <th class="p-3">Місяць 1 (Січень)</th>
+                            <th class="p-3">Місяць 2 (Лютий)</th>
+                            <th class="p-3">Місяць 3 (Березень)</th>
+                            <th class="p-3 bg-blue-50 text-blue-900">Разом за І квартал</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        <tr>
+                            <td class="p-3 font-medium">ПДФО (18%) <span class="block text-xs text-slate-400">Очікується разом: 23 400</span></td>
+                            <td class="p-2"><input id="m1-pdfo" oninput="recalcTable()" type="number" class="w-24 sm:w-28 rounded border border-slate-300 px-2 py-1.5 text-sm" placeholder="0"></td>
+                            <td class="p-2"><input id="m2-pdfo" oninput="recalcTable()" type="number" class="w-24 sm:w-28 rounded border border-slate-300 px-2 py-1.5 text-sm" placeholder="0"></td>
+                            <td class="p-2"><input id="m3-pdfo" oninput="recalcTable()" type="number" class="w-24 sm:w-28 rounded border border-slate-300 px-2 py-1.5 text-sm" placeholder="0"></td>
+                            <td id="sum-pdfo" class="p-3 font-bold bg-blue-50/60 text-slate-900">0 грн</td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 font-medium">Військовий збір (5%) <span class="block text-xs text-slate-400">Очікується разом: 6 500</span></td>
+                            <td class="p-2"><input id="m1-vz" oninput="recalcTable()" type="number" class="w-24 sm:w-28 rounded border border-slate-300 px-2 py-1.5 text-sm" placeholder="0"></td>
+                            <td class="p-2"><input id="m2-vz" oninput="recalcTable()" type="number" class="w-24 sm:w-28 rounded border border-slate-300 px-2 py-1.5 text-sm" placeholder="0"></td>
+                            <td class="p-2"><input id="m3-vz" oninput="recalcTable()" type="number" class="w-24 sm:w-28 rounded border border-slate-300 px-2 py-1.5 text-sm" placeholder="0"></td>
+                            <td id="sum-vz" class="p-3 font-bold bg-blue-50/60 text-slate-900">0 грн</td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 font-medium">ЄСВ (22%) <span class="block text-xs text-slate-400">Очікується разом: 28 600</span></td>
+                            <td class="p-2"><input id="m1-esv" oninput="recalcTable()" type="number" class="w-24 sm:w-28 rounded border border-slate-300 px-2 py-1.5 text-sm" placeholder="0"></td>
+                            <td class="p-2"><input id="m2-esv" oninput="recalcTable()" type="number" class="w-24 sm:w-28 rounded border border-slate-300 px-2 py-1.5 text-sm" placeholder="0"></td>
+                            <td class="p-2"><input id="m3-esv" oninput="recalcTable()" type="number" class="w-24 sm:w-28 rounded border border-slate-300 px-2 py-1.5 text-sm" placeholder="0"></td>
+                            <td id="sum-esv" class="p-3 font-bold bg-blue-50/60 text-slate-900">0 грн</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Панель керування документом у кабінеті -->
+            <div class="flex flex-wrap items-center gap-3">
+                <button type="button" onclick="autoFillMonths()" class="px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs sm:text-sm font-medium transition">
+                    ✨ Розподілити дані по місяцях СТО
+                </button>
+                <button type="button" onclick="validateReport()" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs sm:text-sm font-semibold shadow-sm transition">
+                    1. Перевірити документ (камеральна перевірка)
+                </button>
+                <button id="btn-sign-send" type="button" onclick="signAndSendReport()" disabled class="px-5 py-2.5 rounded-xl bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition">
+                    2. Підписати КЕП та надіслати до ДПС →
+                </button>
+            </div>
+        </section>
+
+        <!-- ==================== ЕТАП 5: ОТРИМАННЯ КВИТАНЦІЇ № 2 ТА ПІДСУМОК ==================== -->
+        <section id="step-5" class="hidden fade-in bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-8">
+            <div class="text-center max-w-2xl mx-auto mb-6">
+                <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 mb-3">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-900">Звітність успішно прийнято ДПС!</h2>
+                <p class="text-sm text-slate-600 mt-1">
+                    У розділі <strong>«Вхідні/вихідні документи»</strong> сформовано пакет підтверджень, включно з офіційною <strong>Квитанцією № 2</strong>.
+                </p>
+            </div>
+
+            <!-- Імітація офіційної Квитанції № 2 -->
+            <div class="max-w-2xl mx-auto bg-emerald-50/70 border-2 border-emerald-500 rounded-2xl p-5 sm:p-6 shadow-sm mb-6">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-200 pb-3 mb-3">
+                    <div class="font-bold text-emerald-900 text-base">КВИТАНЦІЯ № 2 (Пакет прийнято)</div>
+                    <span class="text-xs font-mono bg-emerald-600 text-white px-2.5 py-1 rounded">РЕЄСТР. № 9048271645</span>
+                </div>
+                <div class="space-y-2 text-xs sm:text-sm text-slate-800">
+                    <div><strong>Платник податків:</strong> ФОП Коваленко Андрій Вікторович (РНОКПП 3456789012)</div>
+                    <div><strong>Документ:</strong> Податковий розрахунок сум доходу, ПДФО, ВЗ та ЄСВ (F0500110)</div>
+                    <div><strong>Звітний період:</strong> І Квартал 2026 року (з розбивкою за місяцями: 01, 02, 03)</div>
+                    <div><strong>Нараховані суми за І квартал:</strong> ПДФО — <strong>23 400,00 грн</strong>; Військовий збір — <strong>6 500,00 грн</strong>; ЄСВ — <strong>28 600,00 грн</strong>.</div>
+                    <div><strong>ПДВ до сплати за І квартал:</strong> <strong>40 000,00 грн</strong> (50 000,00 − 10 000,00).</div>
+                    <div class="pt-2 text-emerald-800 font-semibold">
+                        Результат обробки: Пакет прийнято центральним рівнем ДПС України. Помилок не виявлено.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Нагадування про строки сплати податків для студента -->
+            <div class="max-w-2xl mx-auto bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs sm:text-sm text-slate-700 mb-6">
+                <div class="font-bold text-slate-900 mb-1">📅 Календар підприємця (що далі після Квитанції № 2?):</div>
+                <p>
+                    1. Сплатити авансові внески з <strong>ПДФО (23 400 грн)</strong> та <strong>ВЗ (6 500 грн)</strong>, а також <strong>ЄСВ за себе (28 600 грн)</strong> за І квартал 2026 року необхідно <strong>до 19 квітня 2026 року включно</strong> (оскільки 20 число — граничний термін за ПКУ).<br>
+                    2. Сплатити <strong>ПДВ (40 000 грн)</strong> — протягом 10 календарних днів після граничного строку подання декларації з ПДВ.
+                </p>
+            </div>
+
+            <div class="text-center">
+                <button type="button" onclick="resetSimulator()" class="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold transition">
+                    ↻ Пройти тренажер спочатку
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Футер -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+        Інтерактивний навчальний тренажер до курсу «Кар'єра в бізнесі» (Загальна система оподаткування та електронна звітність, 2026)
+    </footer>
+
+    <!-- Логіка тренажера -->
+    <script>
+        // Стан перевірки звіту на 4-му етапі
+        let isReportValidated = false;
+
+        // Відображення дружнього системного сповіщення замість alert()
+        function showToast(type, title, message) {
+            const box = document.getElementById('toast-box');
+            const content = document.getElementById('toast-content');
+            box.classList.remove('hidden');
+
+            const styles = {
+                error: 'bg-red-50 border-red-300 text-red-900',
+                success: 'bg-emerald-50 border-emerald-300 text-emerald-900',
+                info: 'bg-blue-50 border-blue-300 text-blue-900'
+            };
+            const icons = {
+                error: '⚠️',
+                success: '✅',
+                info: 'ℹ️'
+            };
+
+            content.className = `p-3.5 rounded-xl border flex items-start gap-3 text-sm shadow-sm fade-in ${styles[type] || styles.info}`;
+            content.innerHTML = `
+                <span class="text-lg leading-none">${icons[type] || icons.info}</span>
+                <div>
+                    <div class="font-bold">${title}</div>
+                    <div class="text-xs sm:text-sm opacity-95 mt-0.5">${message}</div>
+                </div>
+            `;
+        }
+
+        function hideToast() {
+            document.getElementById('toast-box').classList.add('hidden');
+        }
+
+        // Перемикання між етапами симулятора
+        function goToStep(stepNumber) {
+            hideToast();
+            for (let i = 1; i <= 5; i++) {
+                const section = document.getElementById(`step-${i}`);
+                const nav = document.getElementById(`nav-step-${i}`);
+                const badge = nav.querySelector('span');
+
+                if (i === stepNumber) {
+                    section.classList.remove('hidden');
+                    nav.className = 'step-pill flex items-center gap-2 p-2 rounded-lg bg-blue-50 text-blue-700 font-semibold border border-blue-300 shadow-xs';
+                    if (i === 5) nav.classList.add('col-span-2', 'sm:col-span-1');
+                    badge.className = 'w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs shrink-0';
+                } else if (i < stepNumber) {
+                    section.classList.add('hidden');
+                    nav.className = 'step-pill flex items-center gap-2 p-2 rounded-lg bg-emerald-50 text-emerald-700 font-medium border border-emerald-200';
+                    if (i === 5) nav.classList.add('col-span-2', 'sm:col-span-1');
+                    badge.className = 'w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs shrink-0';
+                } else {
+                    section.classList.add('hidden');
+                    nav.className = 'step-pill flex items-center gap-2 p-2 rounded-lg bg-slate-50 text-slate-400 border border-slate-200';
+                    if (i === 5) nav.classList.add('col-span-2', 'sm:col-span-1');
+                    badge.className = 'w-5 h-5 rounded-full bg-slate-300 text-white flex items-center justify-center text-xs shrink-0';
+                }
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Етап 1: Дії з КЕП
+        function loadDemoKey() {
+            document.getElementById('key-filename').value = 'Key-6_FOP_Kovalenko_AV_2026.dat';
+            showToast('info', 'Файл ключа завантажено', 'Тепер введіть пароль захисту ключа (2026) та оберіть надавача КЕП.');
+        }
+
+        function fillDemoPassword() {
+            document.getElementById('key-password').value = '2026';
+        }
+
+        function submitStep1() {
+            const knedp = document.getElementById('knedp-select').value;
+            const keyFile = document.getElementById('key-filename').value;
+            const pass = document.getElementById('key-password').value.trim();
+
+            if (!knedp) {
+                showToast('error', 'Не обрано надавача КЕП', 'Будь ласка, оберіть АЦСК/КНЕДП зі списку (наприклад, КНЕДП ДПС України).');
+                return;
+            }
+            if (!keyFile) {
+                showToast('error', 'Відсутній особистий ключ', 'Натисніть «Обрати тестовий ключ ФОП», щоб завантажити файл КЕП.');
+                return;
+            }
+            if (pass !== '2026') {
+                showToast('error', 'Невірний пароль ключа', 'Для навчального ключа ФОП Коваленка введіть пароль: 2026');
+                return;
+            }
+
+            // Показуємо бейдж авторизованого користувача в шапці
+            const userBadge = document.getElementById('user-badge');
+            userBadge.classList.remove('hidden');
+            userBadge.classList.add('flex');
+
+            goToStep(2);
+            showToast('success', 'КЕП успішно зчитано!', 'Ви увійшли в Електронний кабінет ФОП Коваленка А.В. Тепер розрахуйте податки за І квартал.');
+        }
+
+        // Етап 2: Перевірка податкових розрахунків
+        function checkCalculations() {
+            const netIncome = Number(document.getElementById('calc-net-income').value);
+            const pdfo = Number(document.getElementById('calc-pdfo').value);
+            const vz = Number(document.getElementById('calc-vz').value);
+            const esv = Number(document.getElementById('calc-esv').value);
+            const pdv = Number(document.getElementById('calc-pdv').value);
+
+            const errors = [];
+            if (netIncome !== 130000) errors.push('Чистий дохід: від виторгу без ПДВ (300 000 − 50 000 = 250 000) відніміть витрати (120 000).');
+            if (pdfo !== 23400) errors.push('ПДФО (18%): помножте чистий дохід (130 000 грн) на 18%.');
+            if (vz !== 6500) errors.push('Військовий збір (5%): помножте чистий дохід (130 000 грн) на 5%.');
+            if (esv !== 28600) errors.push('ЄСВ (22%): помножте чистий дохід (130 000 грн) на 22%.');
+            if (pdv !== 40000) errors.push('ПДВ до сплати: від податкового зобов’язання (50 000 грн) відніміть вхідний ПДВ (10 000 грн).');
+
+            if (errors.length > 0) {
+                showToast('error', 'Знайдено помилки в розрахунках:', errors.join(' '));
+                return;
+            }
+
+            goToStep(3);
+            showToast('success', 'Усі податки розраховано бездоганно!', 'Чистий дохід: 130 000 грн; ПДФО: 23 400 грн; ВЗ: 6 500 грн; ЄСВ: 28 600 грн; ПДВ: 40 000 грн.');
+        }
+
+        // Етап 3: Перевірка параметрів звіту
+        function submitStep3() {
+            const year = document.getElementById('report-year').value;
+            const period = document.getElementById('report-period').value;
+            const deadline = document.getElementById('report-deadline').value;
+            const formRadio = document.querySelector('input[name="form-code"]:checked');
+
+            if (year !== '2026') {
+                showToast('error', 'Невірний звітний рік', 'За умовою завдання ми звітуємо за І квартал 2026 року.');
+                return;
+            }
+            if (period !== 'q1') {
+                showToast('error', 'Невірний період подання', 'Для ФОП у 2026 році об’єднана звітність подається поквартально (оберіть «І Квартал»).');
+                return;
+            }
+            if (deadline !== '40days') {
+                showToast('error', 'Помилка у граничному строці', 'Квартальна об’єднана звітність подається протягом 40 календарних днів після закінчення кварталу.');
+                return;
+            }
+            if (!formRadio || formRadio.value !== 'J0500110') {
+                showToast('error', 'Обрано невідповідний бланк', 'Для об’єднаної звітності з ПДФО, ВЗ та ЄСВ оберіть форму F0500110.');
+                return;
+            }
+
+            goToStep(4);
+            showToast('info', 'Бланк F0500110 відкрито', 'Заповніть суми податків у розрізі трьох місяців І кварталу (Січень, Лютий, Березень).');
+        }
+
+        // Етап 4: Робота з таблицею та підписання
+        function recalcTable() {
+            isReportValidated = false;
+            document.getElementById('btn-sign-send').disabled = true;
+            document.getElementById('doc-status-label').textContent = 'Чернетка (змінено дані)';
+            document.getElementById('doc-status-label').className = 'font-bold text-amber-600';
+
+            const sumPdfo = Number(document.getElementById('m1-pdfo').value) + Number(document.getElementById('m2-pdfo').value) + Number(document.getElementById('m3-pdfo').value);
+            const sumVz = Number(document.getElementById('m1-vz').value) + Number(document.getElementById('m2-vz').value) + Number(document.getElementById('m3-vz').value);
+            const sumEsv = Number(document.getElementById('m1-esv').value) + Number(document.getElementById('m2-esv').value) + Number(document.getElementById('m3-esv').value);
+
+            document.getElementById('sum-pdfo').textContent = `${sumPdfo.toLocaleString('uk-UA')} грн`;
+            document.getElementById('sum-vz').textContent = `${sumVz.toLocaleString('uk-UA')} грн`;
+            document.getElementById('sum-esv').textContent = `${sumEsv.toLocaleString('uk-UA')} грн`;
+        }
+
+        // Реалістичний розподіл замовлень СТО по місяцях (Січень — менше, Березень — сезонний пік ремонту техніки)
+        function autoFillMonths() {
+            document.getElementById('m1-pdfo').value = 5400;
+            document.getElementById('m2-pdfo').value = 7200;
+            document.getElementById('m3-pdfo').value = 10800;
+
+            document.getElementById('m1-vz').value = 1500;
+            document.getElementById('m2-vz').value = 2000;
+            document.getElementById('m3-vz').value = 3000;
+
+            document.getElementById('m1-esv').value = 6600;
+            document.getElementById('m2-esv').value = 8800;
+            document.getElementById('m3-esv').value = 13200;
+
+            recalcTable();
+            showToast('info', 'Показники рознесено по місяцях', 'Січень (30% виручки), Лютий (40%), Березень (50% — сезон підготовки техніки). Натисніть «Перевірити документ».');
+        }
+
+        function validateReport() {
+            const sumPdfo = Number(document.getElementById('m1-pdfo').value) + Number(document.getElementById('m2-pdfo').value) + Number(document.getElementById('m3-pdfo').value);
+            const sumVz = Number(document.getElementById('m1-vz').value) + Number(document.getElementById('m2-vz').value) + Number(document.getElementById('m3-vz').value);
+            const sumEsv = Number(document.getElementById('m1-esv').value) + Number(document.getElementById('m2-esv').value) + Number(document.getElementById('m3-esv').value);
+
+            // Перевірка мінімального ЄСВ у кожному місяці (у 2026 р. мінімум 1902.34 грн/міс)
+            const m1Esv = Number(document.getElementById('m1-esv').value);
+            const m2Esv = Number(document.getElementById('m2-esv').value);
+            const m3Esv = Number(document.getElementById('m3-esv').value);
+
+            if (sumPdfo !== 23400 || sumVz !== 6500 || sumEsv !== 28600) {
+                showToast('error', 'Камеральна перевірка не пройдена!', 'Підсумкові суми за три місяці повинні дорівнювати розрахованим за квартал: ПДФО = 23 400 грн, ВЗ = 6 500 грн, ЄСВ = 28 600 грн.');
+                return;
+            }
+            if (m1Esv < 1902.34 || m2Esv < 1902.34 || m3Esv < 1902.34) {
+                showToast('error', 'Порушення мінімального страхового внеску ЄСВ!', 'У 2026 році ЄСВ за кожен місяць не може бути меншим за 1 902,34 грн (22% від МЗП 8 647 грн).');
+                return;
+            }
+
+            isReportValidated = true;
+            document.getElementById('btn-sign-send').disabled = false;
+            document.getElementById('doc-status-label').textContent = 'Перевірено (помилок немає)';
+            document.getElementById('doc-status-label').className = 'font-bold text-emerald-600';
+
+            showToast('success', 'Перевірку пройдено успішно!', 'Податковий розрахунок відповідає контрольним співвідношенням. Тепер підпишіть його КЕП та надішліть.');
+        }
+
+        function signAndSendReport() {
+            if (!isReportValidated) return;
+            goToStep(5);
+        }
+
+        // Повний перезапуск тренажера
+        function resetSimulator() {
+            document.getElementById('knedp-select').value = '';
+            document.getElementById('key-filename').value = '';
+            document.getElementById('key-password').value = '';
+            document.getElementById('user-badge').classList.add('hidden');
+            document.getElementById('user-badge').classList.remove('flex');
+
+            ['calc-net-income', 'calc-pdfo', 'calc-vz', 'calc-esv', 'calc-pdv'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+
+            ['m1-pdfo', 'm2-pdfo', 'm3-pdfo', 'm1-vz', 'm2-vz', 'm3-vz', 'm1-esv', 'm2-esv', 'm3-esv'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            recalcTable();
+            goToStep(1);
+        }
+    </script>
+</body>
+</html>
